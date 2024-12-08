@@ -1,13 +1,10 @@
 package org.cis1200.twentyfortyeight;
 
+import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-/**
- * Below are some example tests for the TicTacToe game.
- */
 
 public class TwentyFortyEightTest {
     TwentyFortyEight t;
@@ -18,74 +15,145 @@ public class TwentyFortyEightTest {
     }
 
     @Test
-    public void checkResetConditions() {
-        t.reset();
+    public void testMergeLeftNothing() {
+        int[][] testBoard = new int[4][4];
+        int[] testRow = new int[]{0,0,0,0};
+        testBoard[0] = testRow;
 
-        for (int col = 0; col < 3; col++) {
-            for (int row = 0; row < 3; row++) {
-                assertEquals(0, t.getCell(col, row));
-            }
-        }
+        t.setBoard(testBoard);
+        t.mergeLeft(0);
 
-        assertTrue(t.getCurrentPlayer());
-        assertEquals(0, t.checkWinner());
+        int[] expected = new int[]{0,0,0,0};
+
+        assertTrue(Arrays.equals(expected,t.getBoard()[0]));
     }
 
     @Test
-    public void turnsAlternateOnlyValid() {
-        assertTrue(t.getCurrentPlayer()); // Player 1's turn
-        assertTrue(t.playTurn(0, 0));
+    public void testMergeLeftSingle() {
+        int[][] testBoard = new int[4][4];
+        int[] testRow = new int[]{2,0,0,0};
+        testBoard[0] = testRow;
 
-        assertFalse(t.getCurrentPlayer()); // Player 2's turn
-        assertTrue(t.playTurn(0, 1));
+        t.setBoard(testBoard);
+        t.mergeLeft(0);
 
-        assertTrue(t.getCurrentPlayer());
-        assertFalse(t.playTurn(0, 0)); // Invalid: square is already taken
+        int[] expected = new int[]{2,0,0,0};
 
-        assertTrue(t.getCurrentPlayer());
-        assertTrue(t.playTurn(1, 0));
-
-        assertFalse(t.getCurrentPlayer());
-        assertTrue(t.playTurn(2, 2));
-
-        assertTrue(t.getCurrentPlayer());
-        assertTrue(t.playTurn(2, 0)); // Player 1 wins across the first row
-
-        assertFalse(t.playTurn(1, 1)); // Invalid: game is over
+        assertTrue(Arrays.equals(expected,t.getBoard()[0]));
     }
 
     @Test
-    public void checkWinConditionsWin() {
-        assertEquals(0, t.checkWinner());
+    public void testMergeLeftSingleShift() {
+        int[][] testBoard = new int[4][4];
+        int[] testRow = new int[]{0,0,2,0};
+        testBoard[0] = testRow;
 
-        t.playTurn(0, 0);
-        t.playTurn(1, 0);
-        t.playTurn(2, 0);
+        t.setBoard(testBoard);
+        t.mergeLeft(0);
 
-        assertEquals(0, t.checkWinner());
+        int[] expected = new int[]{2,0,0,0};
 
-        t.playTurn(1, 1);
-        t.playTurn(2, 2);
-        t.playTurn(1, 2);
-
-        assertEquals(2, t.checkWinner());
+        assertTrue(Arrays.equals(expected,t.getBoard()[0]));
     }
 
     @Test
-    public void checkWinConditionsDraw() {
-        assertEquals(0, t.checkWinner());
-        t.playTurn(1, 1);
-        t.playTurn(1, 2);
-        t.playTurn(2, 2);
-        t.playTurn(0, 0);
-        t.playTurn(0, 1);
-        t.playTurn(2, 1);
-        t.playTurn(1, 0);
-        t.playTurn(0, 2);
+    public void testMergeLeftDouble() {
+        int[][] testBoard = new int[4][4];
+        int[] testRow = new int[]{2,0,0,2};
+        testBoard[0] = testRow;
 
-        assertEquals(0, t.checkWinner());
-        t.playTurn(2, 0);
-        assertEquals(3, t.checkWinner());
+        t.setBoard(testBoard);
+        t.mergeLeft(0);
+
+        int[] expected = new int[]{4,0,0,0};
+
+        assertTrue(Arrays.equals(expected,t.getBoard()[0]));
     }
 
+    @Test
+    public void testMergeLeftDoubleDouble() {
+        int[][] testBoard = new int[4][4];
+        int[] testRow = new int[]{2,2,2,2};
+        testBoard[0] = testRow;
+
+        t.setBoard(testBoard);
+        t.mergeLeft(0);
+
+        int[] expected = new int[]{4,4,0,0};
+
+        assertTrue(Arrays.equals(expected,t.getBoard()[0]));
+    }
+
+    @Test
+    public void testRotate() {
+        int[][] testBoard = new int[][]{
+                {1,2,3,4},
+                {5,6,7,8},
+                {9,10,11,12},
+                {13,14,15,16}};
+
+        t.setBoard(testBoard);
+        t.rotateBoard(1);
+
+        int[][] expected = new int[][]{
+                {13,9,5,1},
+                {14,10,6,2},
+                {15,11,7,3},
+                {16,12,8,4}};
+
+        assertTrue(Arrays.deepEquals(expected,t.getBoard()));
+    }
+
+    @Test
+    public void testLoadFromFile() {
+        int[][] testBoard = new int[][]{
+                {1,2,3,4},
+                {5,6,7,8},
+                {9,10,11,12},
+                {13,14,15,16}};
+
+        t.loadFromFile(50,testBoard,false);
+        assertEquals(50,t.getScore());
+        assertTrue(Arrays.deepEquals(testBoard,t.getBoard()));
+        assertFalse(t.isGameOver());
+    }
+
+    @Test
+    public void testCheckGameOverBy2048() {
+        int[][] testBoard = new int[][]{
+                {1,2,3,4},
+                {5,6,7,8},
+                {9,10,11,12},
+                {13,14,15,2048}};
+
+        t.setBoard(testBoard);
+        t.checkGameOver();
+        assertTrue(t.isGameOver());
+    }
+
+    @Test
+    public void testCheckGameOverByLoss() {
+        int[][] testBoard = new int[][]{
+                {1,2,3,4},
+                {5,6,7,8},
+                {9,10,11,12},
+                {13,14,15,16}};
+
+        t.setBoard(testBoard);
+        t.checkGameOver();
+        assertTrue(t.isGameOver());
+    }
+
+    @Test
+    public void testCheckGameNotOver() {
+        int[][] testBoard = new int[][]{
+                {1,2,3,4},
+                {5,6,7,8},
+                {9,10,11,12},
+                {13,14,15,0}};
+
+        t.setBoard(testBoard);
+        t.checkGameOver();
+        assertFalse(t.isGameOver());
+    }
 }

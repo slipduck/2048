@@ -1,146 +1,270 @@
 package org.cis1200.twentyfortyeight;
 
-/*
- * CIS 120 HW09 - TicTacToe Demo
- * (c) University of Pennsylvania
- * Created by Bayley Tuch, Sabrina Green, and Nicolas Corona in Fall 2020.
- */
-
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.io.*;
+import java.util.*;
 
-/**
- * This class instantiates a TicTacToe object, which is the model for the game.
- * As the user clicks the game board, the model is updated. Whenever the model
- * is updated, the game board repaints itself and updates its status JLabel to
- * reflect the current state of the model.
- * 
- * This game adheres to a Model-View-Controller design framework. This
- * framework is very effective for turn-based games. We STRONGLY
- * recommend you review these lecture slides, starting at slide 8,
- * for more details on Model-View-Controller:
- * https://www.seas.upenn.edu/~cis120/current/files/slides/lec37.pdf
- * 
- * In a Model-View-Controller framework, GameBoard stores the model as a field
- * and acts as both the controller (with a MouseListener) and the view (with
- * its paintComponent method and the status JLabel).
- */
+//setting up gameboard
 @SuppressWarnings("serial")
 public class GameBoard extends JPanel {
+    private final TwentyFortyEight tfe;
+    private final JLabel score;
+    private final TreeMap<Integer,Color> colors;
 
-    private TwentyFortyEight ttt; // model for the game
-    private JLabel status; // current status text
+    public static final Color BACKGROUND_COLOR = new Color(156,139,124);
+    public static final int BORDER_PADDING = 15;
+    public static final int CELL_PADDING = 15;
+    public static final int CELL_SIZE = 100;
+    public static final int BOARD_TILE_LENGTH = 4;
+    public static final int BOARD_WIDTH = 2 * BORDER_PADDING + CELL_SIZE * BOARD_TILE_LENGTH
+            + CELL_PADDING * (BOARD_TILE_LENGTH - 1);
+    public static final int BOARD_HEIGHT = BOARD_WIDTH;
 
-    // Game constants
-    public static final int BOARD_WIDTH = 300;
-    public static final int BOARD_HEIGHT = 300;
-
-    /**
-     * Initializes the game board.
-     */
-    public GameBoard(JLabel statusInit) {
-        // creates border around the court area, JComponent method
-        setBorder(BorderFactory.createLineBorder(Color.BLACK));
-
-        // Enable keyboard focus on the court area. When this component has the
-        // keyboard focus, key events are handled by its key listener.
+    public GameBoard(JLabel initScore,String fileName) {
+        setBackground(BACKGROUND_COLOR);
         setFocusable(true);
 
-        ttt = new TwentyFortyEight(); // initializes model for the game
-        status = statusInit; // initializes the status JLabel
+        tfe = new TwentyFortyEight();
+        score = initScore;
+        colors = new TreeMap<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] nums = line.split(",");
+                int value = Integer.parseInt(nums[0]);
+                int r = Integer.parseInt(nums[1]);
+                int g = Integer.parseInt(nums[2]);
+                int b = Integer.parseInt(nums[3]);
+                colors.put(value, new Color(r,g,b));
+            }
+        } catch (IOException e) {
+            System.out.println("Colors were unable to be loaded.");
+        }
 
-        /*
-         * Listens for mouseclicks. Updates the model, then updates the game
-         * board based off of the updated model.
-         */
-        addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                Point p = e.getPoint();
-
-                // updates the model given the coordinates of the mouseclick
-                ttt.playTurn(p.x / 100, p.y / 100);
-
-                updateStatus(); // updates the status JLabel
-                repaint(); // repaints the game board
+        addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_UP) {
+                    tfe.saveGameState();
+                    tfe.moveUp();
+                    if (tfe.isMerged()) {
+                        tfe.addNewTile();
+                    }
+                    repaint();
+                }
+                if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                    tfe.saveGameState();
+                    tfe.moveDown();
+                    if (tfe.isMerged()) {
+                        tfe.addNewTile();
+                    }
+                    repaint();
+                }
+                if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                    tfe.saveGameState();
+                    tfe.moveLeft();
+                    if (tfe.isMerged()) {
+                        tfe.addNewTile();
+                    }
+                    repaint();
+                }
+                if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                    tfe.saveGameState();
+                    tfe.moveRight();
+                    if (tfe.isMerged()) {
+                        tfe.addNewTile();
+                    }
+                    repaint();
+                }
             }
         });
     }
 
-    /**
-     * (Re-)sets the game to its initial state.
-     */
-    public void reset() {
-        ttt.reset();
-        status.setText("Player 1's Turn");
-        repaint();
-
-        // Makes sure this component has keyboard/mouse focus
+    public void addInstructions() {
+        JOptionPane.showMessageDialog(this,
+                "This is a game of 2048. Use the arrow keys to shift tiles. " +
+                        "\nThe game ends when you create a 2048 tile or when the grid " +
+                        "\nis filled with no possible moves left. Restarting the game \nis " +
+                        "possible with the reset button. If you want to undo a move, \nhit the " +
+                        "undo button. If desired, you can save your game \nstate into a file " +
+                        "and load it back later using the save/load buttons."
+                        ,
+                "Instructions",
+                JOptionPane.INFORMATION_MESSAGE);
         requestFocusInWindow();
     }
 
-    /**
-     * Updates the JLabel to reflect the current state of the game.
-     */
-    private void updateStatus() {
-        if (ttt.getCurrentPlayer()) {
-            status.setText("Player 1's Turn");
-        } else {
-            status.setText("Player 2's Turn");
-        }
+    public void reset() {
+        tfe.reset();
+        repaint();
+        requestFocusInWindow();
+    }
 
-        int winner = ttt.checkWinner();
-        if (winner == 1) {
-            status.setText("Player 1 wins!!!");
-        } else if (winner == 2) {
-            status.setText("Player 2 wins!!!");
-        } else if (winner == 3) {
-            status.setText("It's a tie.");
+    public void undo() {
+        tfe.undoMove();
+        repaint();
+        requestFocusInWindow();
+    }
+
+    //file format looks like this
+    //score
+    //row1
+    //row2
+    //row3
+    //row4
+    //game over
+
+    public void saveGame(File f) {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(f))) {
+            writer.println(tfe.getScore());
+
+            for (int r = 0; r < BOARD_TILE_LENGTH; r++) {
+                for (int c = 0; c < BOARD_TILE_LENGTH; c++) {
+                    writer.print(tfe.getCell(r,c));
+                    if (c < BOARD_TILE_LENGTH - 1) {
+                        writer.print(",");
+                    }
+                }
+                writer.println();
+            }
+
+            writer.println(tfe.isGameOver());
+
+            JOptionPane.showMessageDialog(this,"Game saved to " + f.getName(),
+                    "Save complete!",JOptionPane.INFORMATION_MESSAGE);
+            requestFocusInWindow();
+
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Error saving game: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            requestFocusInWindow();
         }
     }
 
-    /**
-     * Draws the game board.
-     * 
-     * There are many ways to draw a game board. This approach
-     * will not be sufficient for most games, because it is not
-     * modular. All of the logic for drawing the game board is
-     * in this method, and it does not take advantage of helper
-     * methods. Consider breaking up your paintComponent logic
-     * into multiple methods or classes, like Mushroom of Doom.
-     */
+    public void loadGame(File f) {
+        try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+            String scoreLine = br.readLine();
+            if (scoreLine == null) {
+                throw new IOException();
+            }
+
+            int score = Integer.parseInt(scoreLine);
+
+            int[][] newBoard = new int[BOARD_TILE_LENGTH][BOARD_TILE_LENGTH];
+            for (int r = 0; r < BOARD_TILE_LENGTH; r++) {
+                String[] row = br.readLine().split(",");
+                for (int c = 0; c < BOARD_TILE_LENGTH; c++) {
+                    newBoard[r][c] = Integer.parseInt(row[c]);
+                }
+            }
+
+            boolean gameOver = br.readLine().equals("true");
+
+            tfe.loadFromFile(score,newBoard,gameOver);
+            repaint();
+
+            JOptionPane.showMessageDialog(this,"Game loaded",
+                    "Game Loaded!",JOptionPane.INFORMATION_MESSAGE);
+            requestFocusInWindow();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this,"Error loaded game",
+                    "Error",JOptionPane.ERROR_MESSAGE);
+            requestFocusInWindow();
+        }
+    }
+
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        // Draws board grid
-        int unitWidth = BOARD_WIDTH / 3;
-        int unitHeight = BOARD_HEIGHT / 3;
+        if (tfe.isGameOver()) {
+            score.setText("Game Over!");
+        } else {
+            score.setText("Score: " + tfe.getScore());
+        }
 
-        g.drawLine(unitWidth, 0, unitWidth, BOARD_HEIGHT);
-        g.drawLine(unitWidth * 2, 0, unitWidth * 2, BOARD_HEIGHT);
-        g.drawLine(0, unitHeight, BOARD_WIDTH, unitHeight);
-        g.drawLine(0, unitHeight * 2, BOARD_WIDTH, unitHeight * 2);
+        for (int r = 0; r < BOARD_TILE_LENGTH; r++) {
+            for (int c = 0; c < BOARD_TILE_LENGTH; c++) {
+                int xPos = BORDER_PADDING + c * (CELL_SIZE + CELL_PADDING);
+                int yPos = BORDER_PADDING + r * (CELL_SIZE + CELL_PADDING);
+                int cellValue = tfe.getCell(r,c);
 
-        // Draws X's and O's
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                int state = ttt.getCell(j, i);
-                if (state == 1) {
-                    g.drawOval(30 + 100 * j, 30 + 100 * i, 40, 40);
-                } else if (state == 2) {
-                    g.drawLine(30 + 100 * j, 30 + 100 * i, 70 + 100 * j, 70 + 100 * i);
-                    g.drawLine(30 + 100 * j, 70 + 100 * i, 70 + 100 * j, 30 + 100 * i);
+                g.setColor(getTileColor(cellValue));
+                g.fillRoundRect(xPos,yPos,CELL_SIZE,CELL_SIZE ,12,12);
+
+                if (cellValue != 0) {
+                    g.setFont(fetchFont(cellValue));
+                    g.setColor(getTextColor(cellValue));
+
+                    String v = String.valueOf(cellValue);
+                    int w = g.getFontMetrics().stringWidth(v);
+                    int h = g.getFontMetrics().getHeight();
+
+                    g.setColor(getTextColor(cellValue));
+                    g.drawString(v,xPos + CELL_SIZE / 2 - w / 2,yPos + CELL_SIZE / 2 + h / 2 -
+                            g.getFontMetrics().getDescent());
                 }
             }
         }
     }
 
-    /**
-     * Returns the size of the game board.
-     */
+    private Font fetchFont(int value) {
+        int fontSize;
+        if (value >= 1000) {
+            fontSize = 32;
+        } else if (value >= 100) {
+            fontSize = 34;
+        } else {
+            fontSize = 36;
+        }
+        return new Font(Font.SANS_SERIF,Font.BOLD,fontSize);
+    }
+
+    public Color getTileColor(int value) {
+        return colors.get(value);
+        /*
+        if (value == 0){
+            return new Color(202,192,180);
+        } else if (value == 2){
+            return new Color(236,228,219);
+        } else if (value == 4){
+            return new Color(235,224,203);
+        } else if (value == 8) {
+            return new Color(232,180,129);
+        } else if (value == 16) {
+            return new Color(232,154,108);
+        } else if (value == 32) {
+            return new Color(230,131,103);
+        } else if (value == 64) {
+            return new Color(228,104,71);
+        } else if (value == 128) {
+            return new Color(232,208,128);
+        } else if (value == 256) {
+            return new Color(232,205,114);
+        } else if (value == 512) {
+            return new Color(231,201,101);
+        } else if (value == 1024) {
+            return new Color(231,199,89);
+        } else if (value == 2048) {
+            return new Color(230,196,79);
+        } else {
+            throw new IllegalArgumentException();
+        }*/
+    }
+
+    public Color getTextColor(int value) {
+        if (value == 0) {
+            //for testing
+            return Color.BLACK;
+        } else if (value == 2 || value == 4) {
+            return new Color(130,120,108);
+        } else {
+            return new Color(249,246,242);
+        }
+    }
+
     @Override
     public Dimension getPreferredSize() {
         return new Dimension(BOARD_WIDTH, BOARD_HEIGHT);

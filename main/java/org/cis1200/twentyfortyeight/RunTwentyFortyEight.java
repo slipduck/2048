@@ -1,60 +1,80 @@
 package org.cis1200.twentyfortyeight;
 
-/*
- * CIS 120 HW09 - TicTacToe Demo
- * (c) University of Pennsylvania
- * Created by Bayley Tuch, Sabrina Green, and Nicolas Corona in Fall 2020.
- */
-
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.io.*;
 
-/**
- * This class sets up the top-level frame and widgets for the GUI.
- * 
- * This game adheres to a Model-View-Controller design framework. This
- * framework is very effective for turn-based games. We STRONGLY
- * recommend you review these lecture slides, starting at slide 8,
- * for more details on Model-View-Controller:
- * https://www.seas.upenn.edu/~cis120/current/files/slides/lec37.pdf
- * 
- * In a Model-View-Controller framework, Game initializes the view,
- * implements a bit of controller functionality through the reset
- * button, and then instantiates a GameBoard. The GameBoard will
- * handle the rest of the game's view and controller functionality, and
- * it will instantiate a TicTacToe object to serve as the game's model.
- */
+//layout stuff goes here
+
 public class RunTwentyFortyEight implements Runnable {
     public void run() {
-        // NOTE: the 'final' keyword denotes immutability even for local variables.
-
-        // Top-level frame in which game components live
-        final JFrame frame = new JFrame("TicTacToe");
+        final JFrame frame = new JFrame("2048");
         frame.setLocation(300, 300);
 
-        // Status panel
-        final JPanel status_panel = new JPanel();
-        frame.add(status_panel, BorderLayout.SOUTH);
-        final JLabel status = new JLabel("Setting up...");
-        status_panel.add(status);
+        JLabel score = new JLabel("Score: 0");
+        final JPanel top_panel = new JPanel();
+        frame.add(top_panel, BorderLayout.NORTH);
+        top_panel.add(score);
 
         // Game board
-        final GameBoard board = new GameBoard(status);
+        final GameBoard board = new GameBoard(score,"files/color_config_normal.txt");
         frame.add(board, BorderLayout.CENTER);
 
-        // Reset button
-        final JPanel control_panel = new JPanel();
-        frame.add(control_panel, BorderLayout.NORTH);
+        final JPanel bottom_panel = new JPanel();
+        frame.add(bottom_panel, BorderLayout.SOUTH);
 
-        // Note here that when we add an action listener to the reset button, we
-        // define it as an anonymous inner class that is an instance of
-        // ActionListener with its actionPerformed() method overridden. When the
-        // button is pressed, actionPerformed() will be called.
+        final JButton instructions = new JButton("Instructions");
+        instructions.addActionListener(e -> {
+            board.addInstructions();
+        });
+        bottom_panel.add(instructions);
+
         final JButton reset = new JButton("Reset");
         reset.addActionListener(e -> board.reset());
-        control_panel.add(reset);
+        bottom_panel.add(reset);
 
-        // Put the frame on the screen
+        //undo button
+        final JButton undo = new JButton("Undo");
+        undo.addActionListener(e -> board.undo());
+        bottom_panel.add(undo);
+
+        //save button
+        final JButton save = new JButton("Save");
+        save.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Save Game");
+            chooser.setFileFilter(new FileNameExtensionFilter("2048 Save File (.2048)", "2048"));
+            int result = chooser.showSaveDialog(frame);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File f = chooser.getSelectedFile();
+                if (!f.getName().endsWith(".2048")) {
+                    f = new File(f.getAbsolutePath() + ".2048");
+                }
+                board.saveGame(f);
+            } else if (result == JFileChooser.CANCEL_OPTION) {
+                board.requestFocusInWindow();
+            }
+        });
+        bottom_panel.add(save);
+
+        //load button
+        final JButton load = new JButton("Load");
+        load.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Load Game");
+            chooser.setFileFilter(new FileNameExtensionFilter("2048 Load File (.2048)", "2048"));
+            int result = chooser.showOpenDialog(frame);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File f = chooser.getSelectedFile();
+                board.loadGame(f);
+            } else if (result == JFileChooser.CANCEL_OPTION) {
+                board.requestFocusInWindow();
+            }
+        });
+        bottom_panel.add(load);
+
+        // render game
         frame.pack();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
